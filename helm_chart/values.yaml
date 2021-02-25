@@ -318,8 +318,7 @@ alertmanager:
     fsGroup: 65534
 
   service:
-    annotations: 
-      prometheus.io/scrape: "true"
+    annotations: {}
     labels: {}
     clusterIP: ""
 
