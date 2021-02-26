@@ -323,6 +323,7 @@ alertmanager:
     labels: {}
     clusterIP: ""
 
+
     ## Enabling peer mesh service end points for enabling the HA alert manager
     ## Ref: https://github.com/prometheus/alertmanager/blob/master/README.md
     # enableMeshPeer : true
@@ -1287,7 +1288,6 @@ serverFiles:
         static_configs:
           - targets:
             - localhost:9090
-
       # A scrape configuration for running Prometheus on a Kubernetes cluster.
       # This uses separate scrape configs for cluster components (i.e. API server, node)
       # and services to allow each to use different authentication configs.
@@ -1642,7 +1642,6 @@ serverFiles:
           - source_labels: [__meta_kubernetes_pod_phase]
             regex: Pending|Succeeded|Failed
             action: drop
-
 # adds additional scrape configs to prometheus.yml
 # must be a string so you have to add a | after extraScrapeConfigs:
 # example adds prometheus-blackbox-exporter scrape config
@@ -1665,10 +1664,10 @@ extraScrapeConfigs:
 # Adds option to add alert_relabel_configs to avoid duplicate alerts in alertmanager
 # useful in H/A prometheus with different external labels but the same alerts
 alertRelabelConfigs:
-  # alert_relabel_configs:
-  # - source_labels: [dc]
-  #   regex: (.+)\d+
-  #   target_label: dc
+   #alert_relabel_configs:
+   #- source_labels: [dc]
+   #  regex: (.+)\d+
+   #  target_label: dc
 
 networkPolicy:
   ## Enable creation of NetworkPolicy resources.
