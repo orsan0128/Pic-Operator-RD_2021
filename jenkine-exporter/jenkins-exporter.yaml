@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-exporter
+  namespace: jenkins-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins-exporter
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: "9118"
+      labels:
+        app: jenkins-exporter
+    spec:
+      containers:
+      - name: jenkins-exporter
+        image: tolleiv/jenkins_exporter
+        #command: ["-j http://192.168.92.12:8080 --user user --password OWPmhl7Tmo"]
+        imagePullPolicy: Always
+        env:
+        - name: JENKINS_ADDRESS
+          value: 'http://192.168.92.12:8080'
+        #- name: JENKINS_SERVER
+        #  value: 'http://192.168.92.12:8080'
+        ports:
+        - containerPort: 9118
+          name: http
+        command: ["python","./jenkins_exporter.py","-j","http://192.168.92.12:8080","--user","user","--password","OWPmhl7Tmo"]
+        #args: ['-j http://192.168.92.12:8080']
+        
+         
