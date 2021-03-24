@@ -1233,20 +1233,31 @@ pushgateway:
 ##
 alertmanagerFiles:
   alertmanager.yml:
-    global: {}
+    global:
       # slack_api_url: ''
-
+      resolve_timeout: 5m      # 配置郵件傳送資訊
+      smtp_smarthost: 'smtp.gmail.com:465'
+      smtp_from: 'pic.justin1022@gmail.com'
+      smtp_auth_username: 'pic.justin1022@gmail.com'
+      smtp_auth_password: '密碼先拿掉'
+      smtp_hello: 'gmail.com'
+      smtp_require_tls: false
+    # 所有報警資訊進入後的根路由，用來設定報警的分發策略
     receivers:
       - name: default-receiver
+        email_configs:
+        - to: justin691022@gmail.com
+          send_resolved: true
         # slack_configs:
         #  - channel: '@you'
         #    send_resolved: true
-
+        
     route:
-      group_wait: 10s
-      group_interval: 5m
-      receiver: default-receiver
-      repeat_interval: 3h
+    # 這裡的標籤列表是接收到報警資訊後的重新分組標籤
+      group_wait: 10s  #接收到的報警資訊裡面有許多具有 cluster=A 和 alertname=LatncyHigh 這樣的標籤的報警資訊將會批量被聚合到一個分組裡面
+      group_interval: 5m  # 當第一個報警傳送後，等待'group_interval'時間來發送新的一組報警資訊。
+      receiver: default-receiver  # 預設的receiver：如果一個報警沒有被一個route匹配，則傳送給預設的接收器
+      repeat_interval: 5m  # 如果一個報警資訊已經發送成功了，等待'repeat_interval'時間來重新發送他們
 
 ## Prometheus server ConfigMap entries
 ##
@@ -1254,19 +1265,28 @@ serverFiles:
 
   ## Alerts configuration
   ## Ref: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
-  alerting_rules.yml: {}
-  # groups:
-  #   - name: Instances
-  #     rules:
-  #       - alert: InstanceDown
-  #         expr: up == 0
-  #         for: 5m
-  #         labels:
-  #           severity: page
-  #         annotations:
-  #           description: '{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes.'
-  #           summary: 'Instance {{ $labels.instance }} down'
+  alerting_rules.yml:
+    groups:
+    - name: Instances
+      rules:
+        - alert: InstanceDown
+          expr: up == 0
+          for: 5m
+          labels:
+            severity: page
+          annotations:
+            description: '{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes.'
+            summary: 'Instance {{ $labels.instance }} down'
+        - alert: HostOutOfMemory
+          expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 10
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Host out of memory (instance {{ $labels.instance }})"
+            description: "Node memory is filling up (< 10% left)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
   ## DEPRECATED DEFAULT VALUE, unless explicitly naming your files, please use alerting_rules.yml
+ 
   alerts: {}
 
   ## Records configuration
@@ -1288,6 +1308,10 @@ serverFiles:
         static_configs:
           - targets:
             - localhost:9090
+      - job_name: 'jenkins'
+        static_configs:
+          - targets:
+            - 192.168.91.144:9118
       # A scrape configuration for running Prometheus on a Kubernetes cluster.
       # This uses separate scrape configs for cluster components (i.e. API server, node)
       # and services to allow each to use different authentication configs.
@@ -1468,15 +1492,15 @@ serverFiles:
           - source_labels: [__meta_kubernetes_service_annotation_grafana_io_scrape]
             action: keep
             regex: true
-          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+          - source_labels: [__meta_kubernetes_service_annotation_grafana_io_scheme]
             action: replace
             target_label: __scheme__
             regex: (https?)
-          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+          - source_labels: [__meta_kubernetes_service_annotation_grafana_io_path]
             action: replace
             target_label: __metrics_path__
             regex: (.+)
-          - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+          - source_labels: [__address__, __meta_kubernetes_service_annotation_grafana_io_port]
             action: replace
             target_label: __address__
             regex: ([^:]+)(?::\d+)?;(\d+)
