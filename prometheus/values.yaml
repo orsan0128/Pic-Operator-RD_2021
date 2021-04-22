@@ -1239,7 +1239,7 @@ alertmanagerFiles:
       smtp_smarthost: 'smtp.gmail.com:465'
       smtp_from: 'pic.justin1022@gmail.com'
       smtp_auth_username: 'pic.justin1022@gmail.com'
-      smtp_auth_password: 'Pic50248'
+      smtp_auth_password: '密碼先拿掉'
       smtp_hello: 'gmail.com'
       smtp_require_tls: false
     # 所有報警資訊進入後的根路由，用來設定報警的分發策略
@@ -1253,11 +1253,11 @@ alertmanagerFiles:
         #    send_resolved: true
         
     route:
-    
-      group_wait: 10s  
-      group_interval: 5m  
-      receiver: default-receiver  
-      repeat_interval: 5m  
+    # 這裡的標籤列表是接收到報警資訊後的重新分組標籤
+      group_wait: 10s  #接收到的報警資訊裡面有許多具有 cluster=A 和 alertname=LatncyHigh 這樣的標籤的報警資訊將會批量被聚合到一個分組裡面
+      group_interval: 5m  # 當第一個報警傳送後，等待'group_interval'時間來發送新的一組報警資訊。
+      receiver: default-receiver  # 預設的receiver：如果一個報警沒有被一個route匹配，則傳送給預設的接收器
+      repeat_interval: 5m  # 如果一個報警資訊已經發送成功了，等待'repeat_interval'時間來重新發送他們
 
 ## Prometheus server ConfigMap entries
 ##
@@ -1309,10 +1309,9 @@ serverFiles:
           - targets:
             - localhost:9090
       - job_name: 'jenkins'
-        metrics_path: /prometheus
         static_configs:
           - targets:
-            - 192.168.92.12:8080     
+            - 192.168.91.144:9118
       # A scrape configuration for running Prometheus on a Kubernetes cluster.
       # This uses separate scrape configs for cluster components (i.e. API server, node)
       # and services to allow each to use different authentication configs.
