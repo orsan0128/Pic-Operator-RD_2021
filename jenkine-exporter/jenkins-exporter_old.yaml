@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: jenkins-exporter
-        image: bitnami/jenkins-exporter:latest
+        image: tolleiv/jenkins_exporter
         #command: ["-j http://192.168.92.12:8080 --user user --password OWPmhl7Tmo"]
         imagePullPolicy: Always
         env:
