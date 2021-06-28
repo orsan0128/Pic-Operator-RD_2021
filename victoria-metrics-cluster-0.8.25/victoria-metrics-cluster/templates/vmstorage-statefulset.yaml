@@ -1,0 +1,167 @@
+{{- if .Values.vmstorage.enabled -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+{{- with .Values.vmstorage.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+  labels:
+    {{- include "victoria-metrics.vmstorage.labels" . | nindent 4 }}
+{{- with .Values.vmstorage.extraLabels }}
+{{ toYaml . | indent 4 }}
+{{- end }}
+  name: {{ template "victoria-metrics.vmstorage.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  serviceName: {{ template "victoria-metrics.vmstorage.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "victoria-metrics.vmstorage.matchLabels" . | nindent 6 }}
+  replicas: {{ .Values.vmstorage.replicaCount }}
+  podManagementPolicy: {{ .Values.vmstorage.podManagementPolicy }}
+  template:
+    metadata:
+    {{- if .Values.vmstorage.podAnnotations }}
+      annotations:
+{{ toYaml .Values.vmstorage.podAnnotations | indent 8 }}
+    {{- end }}
+      labels:
+        {{- include "victoria-metrics.vmstorage.labels" . | nindent 8 }}
+{{- with .Values.vmstorage.extraLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+{{- if .Values.vmstorage.priorityClassName }}
+      priorityClassName: "{{ .Values.vmstorage.priorityClassName }}"
+{{- end }}
+{{- if .Values.vmstorage.schedulerName }}
+      schedulerName: "{{ .Values.vmstorage.schedulerName }}"
+{{- end }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountToken }}
+      {{- with .Values.vmstorage.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ template "victoria-metrics.name" . }}-{{ .Values.vmstorage.name }}
+          image: "{{ .Values.vmstorage.image.repository }}:{{ .Values.vmstorage.image.tag }}"
+          imagePullPolicy: "{{ .Values.vmstorage.image.pullPolicy }}"
+          securityContext:
+            {{- toYaml .Values.vmstorage.podSecurityContext | nindent 12 }}
+          args:
+            - {{ printf "%s=%s" "--retentionPeriod" (toString .Values.vmstorage.retentionPeriod) | quote}}
+            - {{ printf "%s=%s" "--storageDataPath" .Values.vmstorage.persistentVolume.mountPath | quote}}
+          {{- range $key, $value := .Values.vmstorage.extraArgs }}
+            - --{{ $key }}={{ $value }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 8482
+            - name: vminsert
+              containerPort: 8400
+            - name: vmselect
+              containerPort: 8401
+          {{- with .Values.vmstorage.env }}
+          env: {{ toYaml . | nindent 10 }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.vmstorage.probe.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.vmstorage.probe.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.vmstorage.probe.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.vmstorage.probe.readiness.failureThreshold }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.vmstorage.probe.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.vmstorage.probe.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.vmstorage.probe.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.vmstorage.probe.liveness.failureThreshold }}
+          resources:
+{{ toYaml .Values.vmstorage.resources | indent 12 }}
+          volumeMounts:
+            - name: vmstorage-volume
+              mountPath: {{ .Values.vmstorage.persistentVolume.mountPath }}
+              subPath: {{ .Values.vmstorage.persistentVolume.subPath }}
+          {{- range .Values.vmstorage.extraHostPathMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+              subPath: {{ .subPath }}
+              readOnly: {{ .readOnly }}
+          {{- end }}
+          {{- range .Values.vmstorage.extraConfigmapMounts }}
+            - name: {{ $.Values.vmstorage.name }}-{{ .name }}
+              mountPath: {{ .mountPath }}
+              subPath: {{ .subPath }}
+              readOnly: {{ .readOnly }}
+          {{- end }}
+          {{- range .Values.vmstorage.extraSecretMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+              subPath: {{ .subPath }}
+              readOnly: {{ .readOnly }}
+          {{- end }}
+          {{- with .Values.vmstorage.extraVolumeMounts }}
+          {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- with .Values.vmstorage.extraContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+       {{ toYaml .Values.imagePullSecrets | indent 2 }}
+    {{- end }}
+    {{- if .Values.vmstorage.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.vmstorage.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- if .Values.vmstorage.securityContext }}
+      securityContext:
+{{ toYaml .Values.vmstorage.securityContext | indent 8 }}
+    {{- end }}
+    {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ template "victoria-metrics.serviceAccountName" . }}
+    {{- end }}
+    {{- if .Values.vmstorage.tolerations }}
+      tolerations:
+{{ toYaml .Values.vmstorage.tolerations | indent 8 }}
+    {{- end }}
+    {{- if .Values.vmstorage.affinity }}
+      affinity:
+{{ toYaml .Values.vmstorage.affinity | indent 8 }}
+    {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.vmstorage.terminationGracePeriodSeconds }}
+      volumes:
+        {{- with .Values.vmstorage.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if not .Values.vmstorage.persistentVolume.enabled }}
+        - name: vmstorage-volume
+          emptyDir: {}
+        {{- end }}
+  {{- if .Values.vmstorage.persistentVolume.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: vmstorage-volume
+        {{- if .Values.vmstorage.persistentVolume.annotations }}
+        annotations:
+{{ toYaml .Values.vmstorage.persistentVolume.annotations | indent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+{{ toYaml .Values.vmstorage.persistentVolume.accessModes | indent 10 }}
+        resources:
+          requests:
+            storage: "{{ .Values.vmstorage.persistentVolume.size }}"
+      {{- if .Values.vmstorage.persistentVolume.storageClass }}
+      {{- if (eq "-" .Values.vmstorage.persistentVolume.storageClass) }}
+        storageClassName: ""
+      {{- else }}
+        storageClassName: "{{ .Values.vmstorage.persistentVolume.storageClass }}"
+      {{- end }}
+      {{- end }}
+{{- end }}
+{{- end }}
