@@ -1,2 +1,2 @@
 # Pic-Operator-RD_2021
-helm_chart : Put the prometheus-community values.yaml
+2021/6/28 漢文整理最新YAML檔案
